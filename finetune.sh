@@ -25,10 +25,10 @@
 #     --nextvlad_groups 8 \
 
 
-PRETRIAN_MODEL_CHECKPOINT='output/pretrain/MINI_1600/checkpoint-1599.pth'
+PRETRIAN_MODEL_CHECKPOINT='output/pretrain/MINI_1600_512d8b/checkpoint-1599.pth'
 DATASET_NAME='mini' #'mini', 'FC100', 'tiered', 'CUB', 'CIFAR_FS'
-OUTPUT_DIR='output/finetune/MINI_1600'
-GPUS='1' # we use sinle GPU
+OUTPUT_DIR='output/finetune/mini1600/384d'
+GPUS='2' # we use sinle GPU
 python main_finetune.py \
     --blr 7e-4 \
     --seed 0 \
@@ -41,7 +41,7 @@ python main_finetune.py \
     --batch_size 128 \
     --epochs 100 \
     --pooling nextvlad \
-    --mask_ratio 0.0 \
+    --mask_ratio 0.7 \
     --focal_gamma 2 \
 
 

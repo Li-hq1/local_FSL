@@ -10,6 +10,7 @@
 # --------------------------------------------------------
 
 from functools import partial
+import random 
 
 import torch
 import torch.nn as nn
@@ -87,6 +88,7 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         
         # masking
         mask_ratio = self.mask_ratio if self.training else 0
+        # mask_ratio = random.uniform(max(0, self.mask_ratio-0.1), min(1, self.mask_ratio+0.1)) if self.training else 0
         x, mask, ids_restore = self.random_masking(x, mask_ratio)
 
         # add cls token

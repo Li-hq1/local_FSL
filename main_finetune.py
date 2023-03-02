@@ -52,7 +52,7 @@ def get_args_parser():
     parser.add_argument('--epochs', default=50, type=int)
     parser.add_argument('--accum_iter', default=1, type=int,
                         help='Accumulate gradient iterations (for increasing the effective batch size under memory constraints)')
-    parser.add_argument("--save_ckpt_freq", default=20, type=int)
+    parser.add_argument("--save_ckpt_freq", default=200, type=int)
     parser.add_argument("--no_save_ckpt", action="store_true")
     parser.add_argument('--pooling', default='mean', type=str)
     parser.add_argument('--mask_ratio', default=.0, type=float)

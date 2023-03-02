@@ -33,9 +33,9 @@ import utils.misc as misc
 from utils.misc import NativeScalerWithGradNormCount as NativeScaler
 
 from datasets.datasets import build_pretraining_dataset
-import models.models_mae as models_mae
+import models.models_mae_addcls as models_mae
 
-from engines.engine_pretrain import train_one_epoch
+from engines.engine_pretrain_addcls import train_one_epoch
 
 
 def get_args_parser():
