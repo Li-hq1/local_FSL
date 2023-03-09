@@ -36,11 +36,11 @@
 #         --norm_pix_loss
 
 
-OUTPUT_DIR='output/pretrain/MINI_1600_512d8b_addcls'
+OUTPUT_DIR='output/pretrain/MINI_1600_512d8b'
 DATASET_NAME='mini'  #'mini', 'FC100', 'tiered', 'CUB', 'CIFAR_FS'
-GPUS='1,2'
-DIST_URL='tcp://127.0.0.1:6666'
-OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=2 --master_port 6666 main_pretrain_addcls.py \
+GPUS='3,4'
+DIST_URL='tcp://127.0.0.1:6667'
+OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=2 --master_port 6667 main_pretrain.py \
         --dist_url ${DIST_URL} \
         --gpus ${GPUS} \
         --dataset_name ${DATASET_NAME} \
@@ -48,7 +48,7 @@ OMP_NUM_THREADS=1 python -m torch.distributed.launch --nproc_per_node=2 --master
         --blr 1.5e-4 \
         --weight_decay 0.05 \
         --mask_ratio 0.75 \
-        --model mae_vit_base_patch16_dec512d8b \
+        --model mae_vit_base_patch16 \
         --batch_size 128 \
         --warmup_epochs 40 \
         --epochs 1600 \

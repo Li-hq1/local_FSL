@@ -26,6 +26,7 @@ from torch.utils.tensorboard import SummaryWriter
 # import timm
 # assert timm.__version__ == "0.3.2" # version check
 
+from timm.models.layers import trunc_normal_
 from timm.data.mixup import Mixup
 from timm.loss import LabelSmoothingCrossEntropy, SoftTargetCrossEntropy
 
@@ -55,8 +56,11 @@ def get_args_parser():
     parser.add_argument("--save_ckpt_freq", default=200, type=int)
     parser.add_argument("--no_save_ckpt", action="store_true")
     parser.add_argument('--pooling', default='mean', type=str)
+    parser.add_argument("--nextvlad_lamb", default=4, type=int)
+    parser.add_argument("--nextvlad_cluster", default=64, type=int)
+    parser.add_argument("--nextvlad_groups", default=8, type=int)
     parser.add_argument('--mask_ratio', default=.0, type=float)
-    parser.add_argument("--focal_gamma", default=2., type=float)
+    parser.add_argument("--focal_gamma", default=0., type=float)
     parser.add_argument("--meta_distance", default="cos", type=str)
 
     # few shot parameters
@@ -295,7 +299,10 @@ def main(args):
         num_classes=args.nb_classes,
         drop_path_rate=args.drop_path,
         pooling=args.pooling, 
-        mask_ratio=args.mask_ratio
+        mask_ratio=args.mask_ratio,
+        nextvlad_lamb=args.nextvlad_lamb,
+        nextvlad_cluster=args.nextvlad_cluster,
+        nextvlad_groups=args.nextvlad_groups,
     )
 
     if args.finetune:
@@ -363,7 +370,9 @@ def main(args):
     # resume
     misc.load_model(args=args, model_without_ddp=model_without_ddp, optimizer=optimizer, loss_scaler=loss_scaler)
 
-    
+    # manually initialize fc layer
+    # trunc_normal_(model.head.weight, std=2e-5)
+
     # testing
     if args.meta_test:
         acc_1shot = meta_evaluate(args, data_loader_metatest_1shot, meta_model, device)

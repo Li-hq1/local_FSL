@@ -17,12 +17,13 @@ import torch.nn as nn
 
 import timm.models.vision_transformer
 from timm.models.layers import trunc_normal_
-from models.nextvlad import NeXtVLAD
+from models.nextvlad import NeXtVLAD, NeXtVLAD_Centers
 
 class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
     """ Vision Transformer with support for global average pooling
     """
-    def __init__(self, pooling='mean', mask_ratio=.0, **kwargs):
+    def __init__(self, pooling='mean', mask_ratio=.0, 
+                 nextvlad_lamb=4, nextvlad_cluster=64, nextvlad_groups=8, **kwargs):
         super(VisionTransformer, self).__init__(**kwargs)
         self.mask_ratio = mask_ratio
         # pooling preperation
@@ -35,13 +36,11 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         # pooling
         if self.pooling == 'mean':
             self.fc_norm = norm_layer(embed_dim)
+            self.act = nn.ReLU()
         elif self.pooling == 'nextvlad':
             num_patches = self.patch_embed.num_patches
             self.before_norm = norm_layer(embed_dim)
             self.after_norm = norm_layer(embed_dim)
-            nextvlad_cluster = 64
-            nextvlad_lamb = 4
-            nextvlad_groups = 8
             self.nextvlad = NeXtVLAD(
                 feature_size=embed_dim,
                 max_frames=num_patches,
@@ -52,6 +51,25 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             nextvlad_dim = (nextvlad_cluster * nextvlad_lamb * embed_dim // nextvlad_groups)
             self.dim_reduce = nn.Linear(nextvlad_dim, embed_dim)
             self.act = nn.ReLU()
+        elif self.pooling == 'nextvlad_centers':
+            num_patches = self.patch_embed.num_patches
+            self.before_norm = norm_layer(embed_dim)
+            self.after_norm = norm_layer(embed_dim)
+            self.cluster_weights = nn.Parameter(torch.rand(1, int((nextvlad_lamb * embed_dim) // nextvlad_groups), nextvlad_cluster))
+            self.nextvlad = NeXtVLAD_Centers(
+                feature_size=embed_dim,
+                max_frames=num_patches,
+                nextvlad_cluster_size=nextvlad_cluster,
+                lamb=nextvlad_lamb,
+                groups=nextvlad_groups,
+                cluster_weights=self.cluster_weights
+            )
+            nextvlad_dim = (nextvlad_cluster * nextvlad_lamb * embed_dim // nextvlad_groups)
+            self.dim_reduce = nn.Linear(nextvlad_dim, embed_dim)
+            self.act = nn.ReLU()
+            
+            # torch.nn.init.normal_(self.cluster_weights, std=.02)
+            # torch.nn.init.xavier_uniform_(self.cluster_weights.weight)
         
         trunc_normal_(self.head.weight, std=2e-5)
         
@@ -106,7 +124,9 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
         # pooling
         if self.pooling == 'mean':
             x = x[:, 1:, :].mean(dim=1)  # global pooling without cls token
-            outcome = self.fc_norm(x)
+            # outcome = self.fc_norm(x)
+            x = self.fc_norm(x)
+            outcome = self.act(x)
         elif self.pooling == 'cls':
             x = self.norm(x)
             outcome = x[:, 0]
@@ -120,18 +140,40 @@ class VisionTransformer(timm.models.vision_transformer.VisionTransformer):
             x = self.nextvlad(x, mask)
             x = self.dim_reduce(x)
             x = self.after_norm(x)
+            # x -= 1.0
             outcome = self.act(x)
+            return outcome
+        elif self.pooling == "nextvlad_centers":
+            # append zero tokens to sequence
+            zero_tokens = torch.zeros([B, ids_restore.shape[1] + 1 - x.shape[1], D], device=x.device, dtype=x.dtype)
+            x_ = torch.cat([x[:, 1:, :], zero_tokens], dim=1)  # no cls token
+            x = torch.gather(x_, dim=1, index=ids_restore.unsqueeze(-1).repeat(1, 1, D))  # unshuffle [B, L, D]
+            # nextvlad
+            x = self.before_norm(x)
+            x = self.nextvlad(x, mask)
+            x = self.dim_reduce(x)
+            x = self.after_norm(x)
+            outcome = self.act(x)
+            # outcome = x
             return outcome
         else: 
             assert False, 'Wrong pooling value!'
 
         return outcome
-    
+
     def forward(self, x):
         rep = self.forward_features(x)
         ce = self.head(rep)
+        if self.pooling == 'nextvlad_centers':
+            return ce, self.cluster_weights.squeeze(0).T
         return ce
 
+
+def vit_suptiny_patch16(**kwargs):
+    model = VisionTransformer(
+        patch_size=16, embed_dim=768, depth=6, num_heads=12, mlp_ratio=4, qkv_bias=True,
+        norm_layer=partial(nn.LayerNorm, eps=1e-6), **kwargs)
+    return model
 
 
 def vit_base_patch16(**kwargs):

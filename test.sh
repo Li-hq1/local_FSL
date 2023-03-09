@@ -1,8 +1,8 @@
 # meta test
-MODEL_PATH='output/finetune/mini1600/MINI_1600_0.75+-0.1mask/checkpoint-best_meta_val.pth'
+MODEL_PATH='output/finetune/no_focal/local/0.2_1ratio/checkpoint-best_meta_val.pth'
 DATASET_NAME='mini'  #'mini', 'FC100', 'tiered', 'CUB', 'CIFAR_FS'
 OUTPUT_DIR='output/test'
-GPUS='5'
+GPUS='7'
 python main_finetune.py \
     --seed 0 \
     --gpus ${GPUS} \
